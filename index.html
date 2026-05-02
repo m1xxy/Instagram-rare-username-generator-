@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>M1XXY Username Generator</title>
+    
+    <!-- Fonts -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Space+Mono:wght@700&display=swap');
+    </style>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- GSAP for animations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    
+    <!-- Three.js for 3D Starfield -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #05050A;
+            --neon-cyan: #00f3ff;
+            --neon-purple: #bc13fe;
+            --glass-bg: rgba(15, 15, 25, 0.6);
+            --glass-border: rgba(0, 243, 255, 0.2);
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            margin: 0;
+            overflow-x: hidden;
+            background-color: var(--bg-color);
+            color: #ffffff;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* iOS Native Font specifically for the message box */
+        .ios-font {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        /* 3D Canvas Background */
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -1;
+        }
+
+        /* Glowing Glassmorphism Panel */
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 0 40px rgba(0, 243, 255, 0.05), 
+                        inset 0 0 20px rgba(188, 19, 254, 0.05);
+        }
+
+        /* Glowing Text */
+        .text-glow {
+            text-shadow: 0 0 15px rgba(0, 243, 255, 0.5);
+        }
+        
+        .logo-glow {
+            box-shadow: 0 0 25px var(--neon-cyan), inset 0 0 15px var(--neon-purple);
+        }
+
+        /* Custom Neon Toggle */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: var(--neon-purple);
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: var(--neon-purple);
+            box-shadow: 0 0 10px var(--neon-purple);
+        }
+        .toggle-checkbox {
+            right: 0;
+            z-index: 1;
+            border-color: rgba(255,255,255,0.2);
+            transition: all 0.3s ease;
+        }
+        .toggle-label {
+            width: 3.25rem;
+            height: 1.75rem;
+            background-color: rgba(255,255,255,0.1);
+            border-radius: 9999px;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .toggle-dot {
+            top: 0.125rem;
+            left: 0.125rem;
+            width: 1.5rem;
+            height: 1.5rem;
+            background-color: #fff;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+        }
+        .toggle-checkbox:checked ~ .toggle-dot {
+            transform: translateX(1.5rem);
+        }
+
+        /* Section Tabs */
+        .tab-btn {
+            transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+        }
+        .tab-btn.active {
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            border: 1px solid rgba(0, 243, 255, 0.3);
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.1);
+        }
+
+        /* Username Pill */
+        .username-pill {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+        .username-pill::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(45deg, transparent, rgba(0, 243, 255, 0.1), transparent);
+            transform: translateX(-100%);
+            transition: transform 0.5s ease;
+        }
+        .username-pill:hover::before {
+            transform: translateX(100%);
+        }
+        .username-pill:hover {
+            transform: translateY(-3px);
+            border-color: var(--neon-cyan);
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.3), inset 0 0 10px rgba(0, 243, 255, 0.1);
+            background: rgba(0, 243, 255, 0.05);
+        }
+        .username-pill:active {
+            transform: translateY(0) scale(0.98);
+        }
+        .username-text {
+            font-family: 'Space Mono', monospace;
+        }
+
+        /* Hide Scrollbar */
+        ::-webkit-scrollbar { display: none; }
+        
+        /* Neon Toast Notification */
+        #toast {
+            position: fixed;
+            bottom: -100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(10, 10, 15, 0.9);
+            border: 1px solid var(--neon-cyan);
+            box-shadow: 0 0 20px rgba(0, 243, 255, 0.4);
+            backdrop-filter: blur(10px);
+            color: #fff;
+            padding: 12px 28px;
+            border-radius: 999px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            z-index: 1000;
+            pointer-events: none;
+        }
+
+        /* Glowing Buttons */
+        .btn-primary {
+            background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple));
+            color: #000;
+            transition: all 0.3s ease;
+            border: none;
+        }
+        .btn-primary:hover {
+            box-shadow: 0 0 25px rgba(188, 19, 254, 0.6);
+            transform: scale(1.02);
+            color: #fff;
+        }
+        .btn-primary:active {
+            transform: scale(0.98);
+        }
+        
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: #fff;
+            transition: all 0.3s ease;
+        }
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: #fff;
+            box-shadow: 0 0 15px rgba(255,255,255,0.2);
+            transform: scale(1.02);
+        }
+        .btn-secondary:active {
+            transform: scale(0.98);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4 sm:p-8">
+
+    <!-- 3D Starfield Background -->
+    <div id="canvas-container"></div>
+
+    <!-- Main UI Container -->
+    <main id="main-card" class="glass-panel w-full max-w-lg rounded-[2.5rem] p-6 sm:p-10 opacity-0 transform translate-y-8 flex flex-col gap-6 relative z-10">
+        
+        <!-- Header -->
+        <header class="text-center space-y-3">
+            <div class="w-16 h-16 mx-auto bg-gray-900 rounded-2xl logo-glow mb-2 flex items-center justify-center text-white text-3xl font-extrabold border border-white/10">
+                <span class="bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-purple-500">M1</span>
+            </div>
+            <h1 class="text-2xl sm:text-3xl font-extrabold tracking-wide text-glow">M1XXY Generator</h1>
+            <p class="text-gray-400 text-sm sm:text-base font-medium">Glowing 4L & 5L aesthetic handles</p>
+        </header>
+
+        <!-- iOS Style Message Box -->
+        <div class="bg-[#1C1C1E]/60 backdrop-blur-md border border-white/10 rounded-2xl p-4 text-center ios-font shadow-lg">
+            <p class="text-[14px] text-gray-200 font-medium leading-relaxed tracking-wide">
+                If the username doesn't work then regenerate another and use that.
+            </p>
+            <div class="w-12 h-[1px] bg-white/20 mx-auto my-3"></div>
+            <p class="text-[15px] text-gray-300 font-normal leading-relaxed" dir="rtl">
+                جے تساں کولوں یوزرنم نہی لگدا تے کوئی اور لاؤ
+            </p>
+        </div>
+
+        <!-- Sections Tab Switcher -->
+        <div class="flex p-1 space-x-1 bg-black/40 rounded-xl border border-white/10">
+            <button id="tab5L" class="tab-btn active w-1/2 py-2.5 text-sm font-bold rounded-lg tracking-wide">
+                5L Usernames
+            </button>
+            <button id="tab4L" class="tab-btn text-gray-400 w-1/2 py-2.5 text-sm font-bold rounded-lg tracking-wide border border-transparent">
+                Rare 4L 
+            </button>
+        </div>
+
+        <!-- Controls -->
+        <div class="bg-black/40 rounded-2xl p-4 flex items-center justify-between border border-white/10">
+            <div class="flex flex-col">
+                <span class="text-sm font-semibold text-gray-200">Exclude Ambiguous</span>
+                <span class="text-xs text-gray-500">Removes 0, o, 1, l</span>
+            </div>
+            
+            <!-- Neon Toggle -->
+            <div class="relative inline-block w-13 mr-2 align-middle select-none">
+                <input type="checkbox" name="toggle" id="safeModeToggle" class="toggle-checkbox absolute block w-6 h-6 rounded-full appearance-none cursor-pointer opacity-0"/>
+                <label for="safeModeToggle" class="toggle-label block overflow-hidden h-7 cursor-pointer"></label>
+                <div class="toggle-dot absolute top-1 left-1 pointer-events-none"></div>
+            </div>
+        </div>
+
+        <!-- Generate Button (Initial state) -->
+        <button id="generateBtn" class="btn-primary w-full py-4 rounded-2xl text-lg font-bold flex items-center justify-center gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+            Generate Usernames
+        </button>
+
+        <!-- Results Area -->
+        <div id="resultsArea" class="hidden flex-col gap-5">
+            <div id="usernamesGrid" class="grid grid-cols-2 gap-3 sm:gap-4">
+                <!-- Username pills injected here via JS -->
+            </div>
+            
+            <!-- Actions -->
+            <div class="flex flex-col sm:flex-row gap-3 mt-2">
+                <button id="regenerateBtn" class="btn-primary flex-1 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                    Regenerate
+                </button>
+                <button id="copyAllBtn" class="btn-secondary flex-1 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
+                    Copy All
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="ios-font">Copied to clipboard!</div>
+
+    <script>
+        // --- 1. THREE.JS MOVING STARFIELD ---
+        let starGeo, stars, starGeo2, stars2;
+        
+        const initThreeJS = () => {
+            const container = document.getElementById('canvas-container');
+            const scene = new THREE.Scene();
+            
+            // Camera
+            const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
+            camera.position.z = 1;
+            camera.rotation.x = Math.PI / 2; // Looking "up" into the stars
+
+            const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(renderer.domElement);
+
+            // Layer 1: White Small Stars
+            starGeo = new THREE.BufferGeometry();
+            const starCount1 = 4000;
+            const posArray1 = new Float32Array(starCount1 * 3);
+            for(let i = 0; i < starCount1 * 3; i++) {
+                posArray1[i] = (Math.random() - 0.5) * 600;
+            }
+            starGeo.setAttribute('position', new THREE.BufferAttribute(posArray1, 3));
+            let starMaterial1 = new THREE.PointsMaterial({
+                color: 0xffffff,
+                size: 0.7,
+                transparent: true,
+                opacity: 0.8
+            });
+            stars = new THREE.Points(starGeo, starMaterial1);
+            scene.add(stars);
+
+            // Layer 2: Cyan/Purple Glowing Stars (Larger)
+            starGeo2 = new THREE.BufferGeometry();
+            const starCount2 = 1500;
+            const posArray2 = new Float32Array(starCount2 * 3);
+            for(let i = 0; i < starCount2 * 3; i++) {
+                posArray2[i] = (Math.random() - 0.5) * 600;
+            }
+            starGeo2.setAttribute('position', new THREE.BufferAttribute(posArray2, 3));
+            let starMaterial2 = new THREE.PointsMaterial({
+                color: 0x00f3ff,
+                size: 1.5,
+                transparent: true,
+                opacity: 0.6
+            });
+            stars2 = new THREE.Points(starGeo2, starMaterial2);
+            scene.add(stars2);
+
+            // Resize handling
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            // Animate moving through space
+            const animate = () => {
+                const positions1 = stars.geometry.attributes.position.array;
+                const positions2 = stars2.geometry.attributes.position.array;
+
+                // Move stars towards camera along Y-axis
+                for(let i = 1; i < starCount1 * 3; i += 3) {
+                    positions1[i] -= 0.5; // Speed layer 1
+                    if(positions1[i] < -300) positions1[i] = 300;
+                }
+                for(let i = 1; i < starCount2 * 3; i += 3) {
+                    positions2[i] -= 0.8; // Speed layer 2
+                    if(positions2[i] < -300) positions2[i] = 300;
+                }
+
+                stars.geometry.attributes.position.needsUpdate = true;
+                stars2.geometry.attributes.position.needsUpdate = true;
+                
+                // Slow rotation for dizzying/cool effect
+                stars.rotation.y += 0.0005;
+                stars2.rotation.y -= 0.0003;
+
+                renderer.render(scene, camera);
+                requestAnimationFrame(animate);
+            };
+            animate();
+        };
+
+        // --- 2. RHYTHMIC GENERATOR LOGIC (4L & 5L sections) ---
+        let currentMode = 5; // default to 5L
+
+        const getC = (safe) => safe ? "bcdfghjkmnpqrstvwxz" : "bcdfghjklmnpqrstvwxz";
+        const getV = (safe) => safe ? "aeuy" : "aeiouy"; // o is removed if safe
+        const getD = (safe) => safe ? "23456789" : "0123456789";
+
+        const pick = (str) => str.charAt(Math.floor(Math.random() * str.length));
+
+        let currentResults =[];
+
+        const generateCoolUsername = (safe, length) => {
+            const C = getC(safe);
+            const V = getV(safe);
+            const D = getD(safe);
+
+            if (length === 5) {
+                // Rhythmic templates for 5L patterns (kev7x, m7yzx)
+                const templates =[
+                    () => pick(C) + pick(V) + pick(C) + pick(D) + pick(C), // kev7x
+                    () => pick(C) + pick(D) + pick(V) + pick(C) + pick(C), // m7yzx
+                    () => pick(C) + pick(D) + pick(C) + pick(C) + pick(V), // m1xxy
+                    () => pick(C) + pick(V) + pick(C) + pick(C) + pick(D), // kyvx7
+                    () => pick(C) + pick(C) + pick(V) + pick(D) + pick(C), // kry7x
+                ];
+                return templates[Math.floor(Math.random() * templates.length)]();
+            } else {
+                // Rhythmic templates for 4L patterns (kev7, m7xy, ak7x) - rarer on IG
+                const templates =[
+                    () => pick(C) + pick(V) + pick(C) + pick(D), // kev7
+                    () => pick(C) + pick(D) + pick(C) + pick(V), // m7xy
+                    () => pick(C) + pick(C) + pick(V) + pick(D), // kxe7
+                    () => pick(C) + pick(V) + pick(C) + pick(C), // mexz
+                    () => pick(V) + pick(C) + pick(D) + pick(C), // ak7x
+                    () => pick(C) + pick(D) + pick(V) + pick(C), // m9ex
+                ];
+                return templates[Math.floor(Math.random() * templates.length)]();
+            }
+        };
+
+        const generateBatch = () => {
+            const isSafe = document.getElementById('safeModeToggle').checked;
+            currentResults =[];
+            for (let i = 0; i < 10; i++) {
+                currentResults.push(generateCoolUsername(isSafe, currentMode));
+            }
+            renderUsernames();
+        };
+
+        // --- 3. UI INTERACTION & GSAP ANIMATIONS ---
+        const renderUsernames = () => {
+            const grid = document.getElementById('usernamesGrid');
+            grid.innerHTML = '';
+
+            currentResults.forEach((uname) => {
+                const pill = document.createElement('div');
+                pill.className = 'username-pill rounded-xl p-3 sm:p-4 flex items-center justify-between group';
+                pill.innerHTML = `
+                    <span class="username-text text-base sm:text-lg font-bold tracking-widest text-white group-hover:text-cyan-300 transition-colors">${uname}</span>
+                    <svg class="w-5 h-5 text-gray-500 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                    </svg>
+                `;
+                
+                // Copy on click
+                pill.addEventListener('click', (e) => {
+                    copyToClipboard(uname);
+                    triggerNeonConfetti(e.clientX, e.clientY);
+                });
+
+                grid.appendChild(pill);
+            });
+
+            // Neon intro animation
+            gsap.fromTo('.username-pill', 
+                { opacity: 0, y: 20, scale: 0.9 },
+                { opacity: 1, y: 0, scale: 1, duration: 0.4, stagger: 0.05, ease: "back.out(1.5)" }
+            );
+        };
+
+        let toastTimeout;
+        const showToast = (message) => {
+            const toast = document.getElementById('toast');
+            toast.innerText = message;
+            
+            gsap.to(toast, { bottom: 40, opacity: 1, duration: 0.4, ease: "back.out(1.5)" });
+            
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                gsap.to(toast, { bottom: -100, opacity: 0, duration: 0.4, ease: "power2.in" });
+            }, 2500);
+        };
+
+        const copyToClipboard = (text) => {
+            navigator.clipboard.writeText(text).then(() => {
+                showToast(`Copied: ${text}`);
+            }).catch(err => {
+                console.error('Failed to copy', err);
+                showToast("Failed to copy!");
+            });
+        };
+
+        // Neon Confetti theme
+        const neonColors =['#00f3ff', '#bc13fe', '#ffffff', '#ff0055'];
+
+        const triggerNeonConfetti = (x, y) => {
+            confetti({
+                particleCount: 35,
+                spread: 50,
+                origin: { x: x / window.innerWidth, y: y / window.innerHeight },
+                colors: neonColors,
+                disableForReducedMotion: true,
+                ticks: 100
+            });
+        };
+
+        const triggerBigNeonConfetti = () => {
+            const duration = 2500;
+            const animationEnd = Date.now() + duration;
+            const defaults = { startVelocity: 25, spread: 360, ticks: 80, zIndex: 0, colors: neonColors };
+
+            const randomInRange = (min, max) => Math.random() * (max - min) + min;
+
+            const interval = setInterval(function() {
+                const timeLeft = animationEnd - Date.now();
+
+                if (timeLeft <= 0) {
+                    return clearInterval(interval);
+                }
+
+                const particleCount = 40 * (timeLeft / duration);
+                confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } }));
+                confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } }));
+            }, 250);
+        };
+
+        // --- 4. EVENT LISTENERS & INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', () => {
+            
+            // 1. Initialize 3D Stars
+            initThreeJS();
+
+            // 2. Cinematic Load Animation
+            gsap.to('#main-card', {
+                opacity: 1,
+                y: 0,
+                duration: 1.2,
+                ease: "power3.out",
+                delay: 0.3
+            });
+
+            const generateBtn = document.getElementById('generateBtn');
+            const regenerateBtn = document.getElementById('regenerateBtn');
+            const copyAllBtn = document.getElementById('copyAllBtn');
+            const resultsArea = document.getElementById('resultsArea');
+            const tab5L = document.getElementById('tab5L');
+            const tab4L = document.getElementById('tab4L');
+
+            // Tab Switching Logic
+            const switchTab = (mode, activeTab, inactiveTab) => {
+                if (currentMode === mode) return;
+                currentMode = mode;
+
+                // Update styling
+                activeTab.classList.add('active');
+                activeTab.classList.remove('text-gray-400', 'border-transparent');
+                
+                inactiveTab.classList.remove('active');
+                inactiveTab.classList.add('text-gray-400', 'border-transparent');
+
+                // If results are showing, animate out and regenerate
+                if(resultsArea.classList.contains('flex')) {
+                    gsap.to('.username-pill', {
+                        opacity: 0, scale: 0.9, y: -10, duration: 0.2, stagger: 0.02,
+                        onComplete: () => generateBatch()
+                    });
+                }
+            };
+
+            tab5L.addEventListener('click', () => switchTab(5, tab5L, tab4L));
+            tab4L.addEventListener('click', () => switchTab(4, tab4L, tab5L));
+
+            // Initial Generate Click
+            generateBtn.addEventListener('click', () => {
+                gsap.to(generateBtn, { 
+                    height: 0, opacity: 0, margin: 0, padding: 0, duration: 0.3, 
+                    onComplete: () => {
+                        generateBtn.style.display = 'none';
+                        resultsArea.classList.remove('hidden');
+                        resultsArea.classList.add('flex');
+                        generateBatch();
+                    }
+                });
+            });
+
+            // Regenerate
+            regenerateBtn.addEventListener('click', () => {
+                gsap.to('.username-pill', {
+                    opacity: 0, scale: 0.9, y: -10, duration: 0.2, stagger: 0.02,
+                    onComplete: () => generateBatch()
+                });
+            });
+
+            // Copy All
+            copyAllBtn.addEventListener('click', () => {
+                if(currentResults.length === 0) return;
+                const textToCopy = currentResults.join('\n');
+                copyToClipboard(textToCopy);
+                showToast("All 10 handles copied!");
+                triggerBigNeonConfetti();
+                
+                // Button bounce
+                gsap.fromTo(copyAllBtn, 
+                    { scale: 0.95 }, 
+                    { scale: 1, duration: 0.4, ease: "elastic.out(1, 0.4)" }
+                );
+            });
+            
+            // Toggle Logic -> trigger regenerate automatically
+            document.getElementById('safeModeToggle').addEventListener('change', () => {
+                if(resultsArea.classList.contains('flex')) {
+                    gsap.to('.username-pill', {
+                        opacity: 0, scale: 0.9, duration: 0.2, stagger: 0.02,
+                        onComplete: () => generateBatch()
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
